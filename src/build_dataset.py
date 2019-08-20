@@ -16,7 +16,26 @@ if not os.path.exists("logs"):
     os.makedirs("logs")
 
 today = datetime.now().strftime('%Y%m%d')
-logging.basicConfig(filename='logs/dataset.{}.log'.format(today),level=logging.DEBUG)
+
+logger = logging.getLogger('worldmodels')
+logger.setLevel(logging.DEBUG)
+
+# Create logger
+logger = logging.getLogger("worldmodels")
+formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s') 
+logger.setLevel(logging.DEBUG)
+
+filehandler = logging.FileHandler(filename='logs/dataset.{}.log'.format(today))
+filehandler.setFormatter(formatter)
+filehandler.setLevel(logging.DEBUG)
+logger.addHandler(filehandler)
+# Uncomment to enable console logger
+steamhandler = logging.StreamHandler()
+steamhandler.setFormatter(formatter)
+steamhandler.setLevel(logging.INFO)
+logger.addHandler(steamhandler)
+
+
 
 def rollout():
     env = gym.make('CarRacing-v0')
@@ -33,7 +52,7 @@ def rollout():
         # buffer.append(obs.copy())
         obs = new_obs
         if done: 
-            logging.info('Total reward {} in {} steps'.format(total_score, steps))
+            logger.info('Total reward {} in {} steps'.format(total_score, steps))
             break
     env.close()
 
@@ -48,7 +67,7 @@ def save_dataset(dataset, fname):
 
 def collect_samples(num_rollouts):
     for rollout_idx in range(num_rollouts):
-        logging.info("Collecting dataset for rollout {}".format(rollout_idx))
+        logger.info("Collecting dataset for rollout {}".format(rollout_idx))
         dataset = rollout()
         save_dataset(dataset, "dataset_{}.pkl".format(rollout_idx))        
 
@@ -84,9 +103,9 @@ def collect_samples_using_ray(num_cpus, num_rollouts):
         num_cpus = available_cpus
 
     ray.init(num_cpus=num_cpus) 
-    logging.info('Starting dataset collection in parallel on {} cpus'.format(num_cpus))
+    logger.info('Starting dataset collection in parallel on {} cpus'.format(num_cpus))
     dataset = ray.get([collect.remote() for _ in range(num_rollouts)])
-    logging.debug(len(dataset))
+    logger.debug(len(dataset))
     save_dataset(dataset, "dataset.pkl")
     # with open('dataset.pkl', 'wb') as f:
     #     pickle.dump(dataset, f, pickle.HIGHEST_PROTOCOL)
@@ -104,4 +123,4 @@ if __name__ == "__main__":
     else:
         collect_samples(args.num_rollouts)
 
-    logging.info('Took {} seconds to generate the dataset'.format(time() - start))
+    logger.info('Took {} seconds to generate the dataset'.format(time() - start))
