@@ -12,6 +12,9 @@ import ray
 # This script will generate the dataset of state, action, new state tuple
 # and store it locally as dataset.pkl. 
 # We make use of ray to generate the datast in parallel
+if not os.path.exists("logs"):
+    os.makedirs("logs")
+
 today = datetime.now().strftime('%Y%m%d')
 logging.basicConfig(filename='logs/dataset.{}.log'.format(today),level=logging.DEBUG)
 

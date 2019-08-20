@@ -1,4 +1,5 @@
 import gym
+from gym import wrappers
 from PIL import Image
 
 def save(idx, data):
@@ -7,12 +8,14 @@ def save(idx, data):
 
 def collect():
     env = gym.make('CarRacing-v0')
+    env = wrappers.Monitor(env, "/tmp/car", video_callable=False ,force=True)
+
     obs = env.reset()
     save(0, obs)
     total_score = 0
     steps = 0
     while True:
-        env.render()
+        #env.render()
         action = env.action_space.sample()
         print(action)
         obs, reward, done, info = env.step(action)
