@@ -1,6 +1,8 @@
 import argparse
 import pickle
+import logging
 import os
+from datetime import datetime
 from time import time
 
 import gym
@@ -10,8 +12,8 @@ import ray
 # This script will generate the dataset of state, action, new state tuple
 # and store it locally as dataset.pkl. 
 # We make use of ray to generate the datast in parallel
-
-NUM_ROLLOUTS=10
+today = datetime.now().strftime('%Y%m%d')
+logging.basicConfig(filename='logs/dataset.{}.log'.format(today),level=logging.DEBUG)
 
 def rollout():
     env = gym.make('CarRacing-v0')
@@ -28,7 +30,7 @@ def rollout():
         # buffer.append(obs.copy())
         obs = new_obs
         if done: 
-            print('Total reward {} in {} steps'.format(total_score, steps))
+            logging.info('Total reward {} in {} steps'.format(total_score, steps))
             break
     env.close()
 
@@ -41,9 +43,9 @@ def save_dataset(dataset, fname):
     with open("dataset/{}".format(fname), 'wb') as f:
         pickle.dump(dataset, f, pickle.HIGHEST_PROTOCOL)
 
-def collect_samples():
-    for rollout_idx in range(NUM_ROLLOUTS):
-        print("Collecting dataset for rollout {}".format(rollout_idx))
+def collect_samples(num_rollouts):
+    for rollout_idx in range(num_rollouts):
+        logging.info("Collecting dataset for rollout {}".format(rollout_idx))
         dataset = rollout()
         save_dataset(dataset, "dataset_{}.pkl".format(rollout_idx))        
 
@@ -69,7 +71,7 @@ def collect():
     # return buffer
     return rollout()
 
-def collect_samples_using_ray(num_cpus):
+def collect_samples_using_ray(num_cpus, num_rollouts):
     available_cpus = psutil.cpu_count(logical=False)
     if num_cpus > 0:
         if num_cpus > available_cpus:
@@ -79,21 +81,24 @@ def collect_samples_using_ray(num_cpus):
         num_cpus = available_cpus
 
     ray.init(num_cpus=num_cpus) 
-    print('Starting dataset collection in parallel on {} cpus'.format(num_cpus))
-    dataset = ray.get([collect.remote() for _ in range(NUM_ROLLOUTS)])
-    print(len(dataset))
+    logging.info('Starting dataset collection in parallel on {} cpus'.format(num_cpus))
+    dataset = ray.get([collect.remote() for _ in range(num_rollouts)])
+    logging.debug(len(dataset))
     save_dataset(dataset, "dataset.pkl")
     # with open('dataset.pkl', 'wb') as f:
     #     pickle.dump(dataset, f, pickle.HIGHEST_PROTOCOL)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ray", help="Number of CPUs to use in parallel to generate the dataset. Use -1 to use all cpus available")
+    parser.add_argument("--parallel", default=False, help="Whether to use parallel processing powered by Ray.")
+    parser.add_argument("--ray", default=-1, type=int, help="Number of CPUs to use in parallel to generate the dataset. Use -1 to use all cpus available")
+    parser.add_argument("--num_rollouts", default=5, type=int, help="Number of rollouts to use for dataset collection")
     args = parser.parse_args()
-    start = time()    
+    start = time()
 
-    if args.ray:        
-        collect_samples_using_ray(int(args.ray))
+    if args.parallel:
+        collect_samples_using_ray(args.ray, args.num_rollouts)
     else:
-        collect_samples()
-    print('Took {} seconds to generate the dataset'.format(time() - start))
+        collect_samples(args.num_rollouts)
+
+    logging.info('Took {} seconds to generate the dataset'.format(time() - start))
