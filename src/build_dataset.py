@@ -2,6 +2,7 @@ import argparse
 import pickle
 import logging
 import os
+import uuid
 from datetime import datetime
 from time import time
 
@@ -58,12 +59,15 @@ def rollout():
 
     return buffer                
 
-def save_dataset(dataset, fname):
+def save_dataset(dataset, fname=None):
     if not os.path.exists("dataset"):
         os.makedirs("dataset")
-        
-    with open("dataset/{}".format(fname), 'wb') as f:
+    
+    fname = fname if not fname is None else "{}.pkl".format(uuid.uuid4())
+    out_fname = "dataset/{}".format(fname)
+    with open(out_fname, 'wb') as f:
         pickle.dump(dataset, f, pickle.HIGHEST_PROTOCOL)
+    return out_fname
 
 def collect_samples(num_rollouts):
     for rollout_idx in range(num_rollouts):
@@ -91,7 +95,9 @@ def collect():
     #         break
 
     # return buffer
-    return rollout()
+    data = rollout()
+    saved_fname = save_dataset(data)
+    return saved_fname
 
 def collect_samples_using_ray(num_cpus, num_rollouts):
     available_cpus = psutil.cpu_count(logical=False)
@@ -106,7 +112,7 @@ def collect_samples_using_ray(num_cpus, num_rollouts):
     logger.info('Starting dataset collection in parallel on {} cpus'.format(num_cpus))
     dataset = ray.get([collect.remote() for _ in range(num_rollouts)])
     logger.debug(len(dataset))
-    save_dataset(dataset, "dataset.pkl")
+    # save_dataset(dataset, "dataset.pkl")
     # with open('dataset.pkl', 'wb') as f:
     #     pickle.dump(dataset, f, pickle.HIGHEST_PROTOCOL)
 
