@@ -113,13 +113,13 @@ def collect_samples_using_ray(num_cpus, num_rollouts):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--parallel", default=False, help="Whether to use parallel processing powered by Ray.")
-    parser.add_argument("--ray", default=-1, type=int, help="Number of CPUs to use in parallel to generate the dataset. Use -1 to use all cpus available")
-    parser.add_argument("--num_rollouts", default=5, type=int, help="Number of rollouts to use for dataset collection")
+    parser.add_argument("--cpus", default=-1, type=int, help="Number of CPUs to use in parallel to generate the dataset. Use -1 to use all cpus available")
+    parser.add_argument("--rollouts", default=5, type=int, help="Number of rollouts to use for dataset collection")
     args = parser.parse_args()
     start = time()
 
     if args.parallel:
-        collect_samples_using_ray(args.ray, args.num_rollouts)
+        collect_samples_using_ray(args.cpus, args.rollouts)
     else:
         collect_samples(args.num_rollouts)
 
