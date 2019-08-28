@@ -127,6 +127,6 @@ if __name__ == "__main__":
     if args.parallel:
         collect_samples_using_ray(args.cpus, args.rollouts)
     else:
-        collect_samples(args.num_rollouts)
+        collect_samples(args.rollouts)
 
     logger.info('Took {} seconds to generate the dataset'.format(time() - start))
