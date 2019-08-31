@@ -24,6 +24,7 @@ available_cpus = psutil.cpu_count()
 ray.init(num_cpus=available_cpus)
 start = time()
 dataset = ray.get([load_pickle.remote(fname) for fname in process_fnames])
+dataset = [subitem for item in dataset for subitem in item]
 np.savez('test.npz', dataset)
 print('Took {} seconds'.format(time() - start))
 
