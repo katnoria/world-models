@@ -5,6 +5,7 @@ import os
 import uuid
 from datetime import datetime
 from time import time
+from PIL import Image
 
 import gym
 import psutil
@@ -38,15 +39,19 @@ logger.addHandler(steamhandler)
 
 
 
-def rollout():
+def rollout(save_img=False):
     env = gym.make('CarRacing-v0')
     obs = env.reset()
     total_score = 0
     steps = 0
     buffer = []
+    ctr = 0
     while True:
         action = env.action_space.sample()
         new_obs, reward, done, info = env.step(action)
+        if save_img: 
+            img = Image.fromarray(new_obs) 
+            img.save('imgs/img_{}.png'.format(steps)) 
         total_score += reward
         steps += 1
         buffer.append((obs.copy(), action, new_obs.copy()))
