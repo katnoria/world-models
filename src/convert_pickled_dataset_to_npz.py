@@ -26,7 +26,7 @@ def convert_states(input_fnames, out_dirname='processed/'):
     start = time()
     dataset = ray.get([load_pickle.remote(fname) for fname in input_fnames])
     dataset = np.asarray([subitem[0] for item in dataset for subitem in item])
-    out_fname = '{}/{}rollouts.npz'.format(out_dirname, len(fnames))
+    out_fname = '{}/{}rollouts.npz'.format(out_dirname, len(input_fnames))
     np.savez(out_fname, dataset)
     print('saved {}'.format(out_fname))
     print('Took {} seconds'.format(time() - start))
