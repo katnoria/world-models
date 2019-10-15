@@ -36,24 +36,19 @@ logger = logging.getLogger("worldmodels")
 formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s') 
 logger.setLevel(logging.DEBUG)
 
+# Uncomment to enable console logger
+streamhandler = logging.StreamHandler()
+streamhandler.setFormatter(formatter)
+streamhandler.setLevel(logging.DEBUG)
+logger.addHandler(streamhandler)
+
 filehandler = logging.FileHandler(filename='logs/dataset.{}.log'.format(today))
 filehandler.setFormatter(formatter)
 filehandler.setLevel(logging.DEBUG)
 logger.addHandler(filehandler)
-# Uncomment to enable console logger
-steamhandler = logging.StreamHandler()
-steamhandler.setFormatter(formatter)
-steamhandler.setLevel(logging.INFO)
-logger.addHandler(steamhandler)
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-dirname = "/mnt/bigdrive/datasets/cartoonset/cartoonset10k/"
-
-fnames = glob('{}/*.png'.format(dirname))
-logger.info('Total files: {}'.format(len(fnames)))
-
-path_ds = tf.data.Dataset.from_tensor_slices(fnames)
 
 def load_preprocess_image(fname, resize_to=[64,64]):
     image = tf.io.read_file(fname)
@@ -62,8 +57,6 @@ def load_preprocess_image(fname, resize_to=[64,64]):
     image = tf.image.resize(image, resize_to)
     image /= 255.0
     return image
-
-image_ds = path_ds.map(load_preprocess_image, num_parallel_calls=AUTOTUNE)
 
 INPUT_SHAPE = (64,64,3)
 # INPUT_SHAPE = (128,128,3)
@@ -160,7 +153,10 @@ def train_step(train_x, model, optimizer):
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     return loss            
 
-def train(output_dirname="output"):
+def train(fnames, output_dirname="output", epochs=600, save_every_pct=0.3, print_every_pct=0.05):
+    logger.info('Total files: {}'.format(len(fnames)))
+    path_ds = tf.data.Dataset.from_tensor_slices(fnames)
+    image_ds = path_ds.map(load_preprocess_image, num_parallel_calls=AUTOTUNE)
     # Dataset
     BATCH_SIZE = 64
     SHUFFLE_BUFFER_SIZE = len(fnames)
@@ -175,7 +171,8 @@ def train(output_dirname="output"):
         os.makedirs('{}/imgs'.format(output_dirname))
 
     # Number of training epochs
-    EPOCHS = 600
+    # EPOCHS = 600
+    logger.info('Training epochs: {}'.format(epochs))
     # Initialize the Variational Autoencoder model 
     model = VAE(encoder, decoder)
     # Define optimizer
@@ -185,13 +182,15 @@ def train(output_dirname="output"):
     losses = []
 
     # How often to print the loss
-    print_every = max(int(0.05 * EPOCHS), 1)
+    print_every = max(int(print_every_pct * epochs), 1)
 
     # Model Checkpoint 
     # Save model and optimizer
     ckpt = tf.train.Checkpoint(optimizer=optimizer, model=model)
     # Set save path and how many checkpoints to save
-    manager = tf.train.CheckpointManager(ckpt, './toons/ckpt/', max_to_keep=2)
+    checkpoint_path = '{}/ckpt/'.format(output_dirname)
+    logger.info('Checkpoints will be stored at {}'.format(checkpoint_path))
+    manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=2)
     # Load the latest checkpoint and restore
     latest_ckpt = manager.latest_checkpoint
     ckpt.restore(latest_ckpt)
@@ -201,17 +200,17 @@ def train(output_dirname="output"):
     else:
         logger.info('Training from scratch')
     # How often to save the checkpoint
-    save_every = max(int(0.3 * EPOCHS), 1)
+    save_every = max(int(save_every_pct * epochs), 1)
 
     # We are now ready to start the training loop
     elapsed_loop_time = time()
-    for epoch in range(0, EPOCHS):
+    for epoch in range(0, epochs):
         for train_x in train_dataset:
             loss = train_step(train_x, model, optimizer)
             losses.append(loss)
         if epoch % print_every == 0:
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            logger.info('{}:vEpoch {}/{}: train loss {} in {} seconds'.format(epoch, EPOCHS, losses[-1], time()-elapsed_loop_time))
+            logger.info('{}:Epoch {}/{}: train loss {} in {} seconds'.format(epoch, epochs, losses[-1], time()-elapsed_loop_time))
             elapsed_loop_time = time()
         if epoch % save_every == 0:
             save_path = manager.save()
@@ -223,4 +222,10 @@ def train(output_dirname="output"):
 
 
 if __name__ == "__main__":
-    train("toons128")
+    # Toons
+    # fnames = glob('{}/*.png'.format("/mnt/bigdrive/datasets/cartoonset/cartoonset10k/"))
+    # train(fnames, output_dirname="toons128")
+
+    # Car racing
+    fnames = glob('{}/*.png'.format("/mnt/bigdrive/projects/public_repos/world-models/src/imgs/"))
+    train(fnames, output_dirname="car_racing")
