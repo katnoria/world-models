@@ -22,7 +22,8 @@ def load_npz_data(fname):
         np_data = data['arr_0']
     return np_data
 
-def load_preprocess_image(fname):
+def load_preprocess_image(record):
+    import pdb; pdb.set_trace();
     image = tf.io.read_file(fname)
     import pdb; pdb.set_trace()
     image = tf.image.decode_jpeg(image, channels=3)
@@ -51,8 +52,7 @@ def load_data(dirname, max_items=None):
 def process():
     data = load_npz_data('processed_with_actions/50rollouts.npz')
     # data = load_data('dataset/', 10)
-    print(data[0][0].shape)
-    ds = tf.data.Dataset.from_tensor_slices(data)    
+    ds = tf.data.Dataset.from_tensor_slices(data)
     dataset = ds.map(load_preprocess_image, num_parallel_calls=AUTOTUNE)
 
 
