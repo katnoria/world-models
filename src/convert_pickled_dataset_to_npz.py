@@ -41,8 +41,10 @@ def convert_states(input_fnames, out_dirname='processed/'):
     ray.init(num_cpus=available_cpus)
     start = time()
     dataset = ray.get([load_pickle.remote(fname) for fname in input_fnames])
-    dataset = np.asarray([subitem[0] for item in dataset for subitem in item])    
-    out_fname = '{}/{}rollouts.npz'.format(out_dirname, len(input_fnames))
+    state, action, next_state = zip(*dataset)
+    # dataset = np.asarray([subitem[0] for item in dataset for subitem in item])    
+    output = np.hstack((state, action, next_state))
+    out_fname = '{}/{}rolloutsv1.npz'.format(out_dirname, len(input_fnames))
     np.savez(out_fname, dataset)
     print('saved {}'.format(out_fname))
     print('Took {} seconds'.format(time() - start))
@@ -55,9 +57,26 @@ def resize_and_compress_buffer(input_fnames, out_dirname='processed_with_actions
     ray.init(num_cpus=available_cpus)
     start = time()
     dataset = ray.get([load_pickle.remote(fname) for fname in input_fnames])
-    dataset = np.asarray([subitem for item in dataset for subitem in item])
+    # dataset = np.asarray([subitem for item in dataset for subitem in item])
+
+    #TODO: need to be vstack of hstack of tuples
+    # Change the format to hstack s,a,s'    
+    states = []
+    actions = []
+    next_states = []
+    for row in dataset:
+        state, action, next_state = zip(*row)
+        states.extend(state)
+        actions.extend(action)
+        next_states.extend(next_state)
+
+    states = np.array(states)
+    actions = np.array(actions)
+    next_states = np.array(next_states)
+
     out_fname = '{}/{}rollouts.npz'.format(out_dirname, len(input_fnames))
-    np.savez(out_fname, dataset)
+    # np.savez(out_fname, dataset)
+    np.savez(out_fname, states, actions, next_states)
     print('saved {}'.format(out_fname))
     print('Took {} seconds'.format(time() - start))
 
