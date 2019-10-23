@@ -50,10 +50,14 @@ def load_data(dirname, max_items=None):
     
 
 def process():
+    # 1. Load data into dataset
     data = load_npz_data('processed_with_actions/50rollouts.npz')
     # data = load_data('dataset/', 10)
     ds = tf.data.Dataset.from_tensor_slices(data)
+    # 2. Preprocess dataset
     dataset = ds.map(load_preprocess_image, num_parallel_calls=AUTOTUNE)
+    # 3. Load VAE Model
+    # 4. Generate z vectors and store them
 
 
 
